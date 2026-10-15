@@ -1,0 +1,10 @@
+# Synthetic fixtures do not import Sentence Transformers or download models.
+fastapi==0.143.1
+httpx==0.28.1
+pydantic-settings==2.16.0
+numpy==2.5.4
+faiss-cpu==1.15.1
+rank-bm25==0.2.2
+pytrec-eval-terrier==0.5.10
+pytest==9.1.1
+ruff==0.17.0

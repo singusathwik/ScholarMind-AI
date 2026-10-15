@@ -1,0 +1,10 @@
+{
+  "dataset": "scifact",
+  "split": "test",
+  "modes": ["bm25", "dense", "hybrid", "rerank"],
+  "candidates": 100,
+  "constant": 60,
+  "rerank_depth": 20,
+  "limit": null,
+  "output": "experiments/results/scifact-test"
+}
