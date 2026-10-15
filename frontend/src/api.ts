@@ -33,18 +33,61 @@ export interface Benchmark {
   partial?: boolean;
   timestamp?: string;
   summary?: Record<string, Record<string, number>>;
+  comparisons?: Record<
+    string,
+    {
+      mean_difference: number;
+      ci95: [number, number];
+      queries: number;
+      bootstrap_samples: number;
+      seed: number;
+    }
+  >;
 }
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, init);
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(
-      typeof body.detail === "string"
-        ? body.detail
-        : `Request failed (${response.status}). Please try again.`,
-    );
+export async function api<T>(
+  path: string,
+  init?: RequestInit,
+  timeoutMs = 180000,
+): Promise<T> {
+  const controller = new AbortController();
+  const abort = () => controller.abort(init?.signal?.reason);
+  if (init?.signal?.aborted) abort();
+  init?.signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(
+    () =>
+      controller.abort(
+        new DOMException(
+          "The request timed out. The server may still be loading a model; try again shortly.",
+          "TimeoutError",
+        ),
+      ),
+    timeoutMs,
+  );
+  try {
+    const response = await fetch(`/api${path}`, {
+      ...init,
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(
+        typeof body.detail === "string"
+          ? body.detail
+          : `Request failed (${response.status}). Please try again.`,
+      );
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    if (controller.signal.aborted) throw controller.signal.reason;
+    if (error instanceof TypeError)
+      throw new Error(
+        "Cannot reach the backend. Check that the local server is running, then retry.",
+      );
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    init?.signal?.removeEventListener("abort", abort);
   }
-  return response.json() as Promise<T>;
 }
 export function safeUrl(url: string | null) {
   if (!url) return undefined;

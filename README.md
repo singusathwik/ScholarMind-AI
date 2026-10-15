@@ -32,6 +32,23 @@ loading/error states, responsive layout and a saved-results evaluation dashboard
 Authors, years and source URLs appear only when available. SciFact metadata is not enriched
 with unverified external identifiers. Similarity scores are not probabilities.
 
+### Research workflow
+
+- Save up to 200 papers to a browser-local reading list, with notes and To read / Reading / Read status.
+- Search and filter saved papers, and export the full list as UTF-8 BibTeX or JSON. BibTeX includes
+  only available bibliographic fields; JSON also includes your personal notes. Keep an export
+  before clearing browser data. Reading lists are not cloud-synced; other tabs on the same origin
+  receive storage updates. Simultaneous edits are last-write-wins.
+- Saved entries retain their corpus identity. Related-paper requests are disabled when viewing
+  an entry from a different active corpus, preventing accidental identifier mismatches.
+- Inspect paired bootstrap confidence intervals directly in Evaluation, including comparisons
+  whose apparent improvements remain inconclusive.
+- Cancel a pending search or recover from a three-minute request timeout. Cancellation stops
+  the browser waiting and prevents stale responses from replacing newer results; inference
+  already running on the server may still finish.
+
+![Persistent reading list](docs/screenshots/reading-list.png)
+
 ## Quick start — Windows PowerShell
 
 Prerequisites: Python 3.12, Node.js 22+, internet for the first dataset/model downloads.

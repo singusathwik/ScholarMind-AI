@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
+  Bookmark,
   Check,
   ChevronRight,
   Clock3,
@@ -23,6 +24,9 @@ import {
   type Paper,
   type Results,
 } from "./api";
+import { useLibrary } from "./library";
+import { ReadingList } from "./ReadingList";
+import { Evidence } from "./Evidence";
 
 const modes: { id: Mode; name: string; caption: string }[] = [
   { id: "bm25", name: "Keyword", caption: "BM25 lexical matching" },
@@ -41,7 +45,10 @@ const examples = [
 ];
 
 export default function App() {
-  const [page, setPage] = useState<"search" | "benchmarks" | "about">("search");
+  const [page, setPage] = useState<
+    "search" | "benchmarks" | "about" | "library"
+  >("search");
+  const library = useLibrary();
   const [health, setHealth] = useState<Health | null>(null);
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<Mode>("hybrid");
@@ -50,6 +57,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Paper | null>(null);
+  const [selectedDataset, setSelectedDataset] = useState("");
+  const [notice, setNotice] = useState("");
   const [related, setRelated] = useState<Paper[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -58,6 +67,8 @@ export default function App() {
   const [resultPage, setResultPage] = useState(0);
   const [topK, setTopK] = useState(20);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const searchController = useRef<AbortController | null>(null);
+  useEffect(() => () => searchController.current?.abort(), []);
 
   useEffect(() => {
     api<Health>("/health")
@@ -78,9 +89,18 @@ export default function App() {
     let current = true;
     setRelated([]);
     setDetailError("");
+    if (selectedDataset !== health?.dataset) {
+      setDetailLoading(false);
+      setDetailError(
+        "Related papers are unavailable for this saved paper: its corpus is different or disconnected. Saved metadata remains available.",
+      );
+      return;
+    }
     setDetailLoading(true);
+    const controller = new AbortController();
     api<{ results: Paper[] }>(
       `/papers/${encodeURIComponent(selected.paper_id)}/recommendations`,
+      { signal: controller.signal },
     )
       .then((response) => {
         if (current) setRelated(response.results);
@@ -93,30 +113,52 @@ export default function App() {
       });
     return () => {
       current = false;
+      controller.abort();
     };
-  }, [selected]);
+  }, [selected, selectedDataset, health?.dataset]);
 
   async function search(text = query) {
     if (!text.trim() || loading) return;
     setQuery(text);
     setLoading(true);
     setError("");
+    setNotice("");
     setResultPage(0);
+    const controller = new AbortController();
+    searchController.current = controller;
     try {
       const data = await api<Results>("/search", {
+        signal: controller.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: text.trim(), mode, top_k: topK }),
       });
+      if (searchController.current !== controller) return;
       setResults(data);
       setSubmitted(text);
     } catch (e) {
+      if (searchController.current !== controller) return;
       setError((e as Error).message);
     } finally {
-      setLoading(false);
+      if (searchController.current === controller) {
+        searchController.current = null;
+        setLoading(false);
+      }
     }
   }
-  async function openPaper(paper: Paper) {
+  function cancelSearch() {
+    searchController.current?.abort();
+    searchController.current = null;
+    setLoading(false);
+    setNotice(
+      "Search cancelled. The server may finish inference already in progress.",
+    );
+  }
+  function openPaper(
+    paper: Paper,
+    dataset = results?.dataset ?? health?.dataset ?? "",
+  ) {
+    setSelectedDataset(dataset);
     setSelected(paper);
   }
 
@@ -145,6 +187,13 @@ export default function App() {
             Discover
           </button>
           <button
+            className={page === "library" ? "active" : ""}
+            onClick={() => setPage("library")}
+          >
+            <Bookmark size={16} />
+            Reading list ({library.items.length})
+          </button>
+          <button
             className={page === "benchmarks" ? "active" : ""}
             onClick={() => setPage("benchmarks")}
           >
@@ -164,6 +213,14 @@ export default function App() {
         </span>
       </header>
       <main>
+        {library.error && (
+          <p className="error" role="alert">
+            {library.error}
+          </p>
+        )}
+        {page === "library" && (
+          <ReadingList library={library} open={openPaper} />
+        )}
         {page === "search" && (
           <>
             <section className={`hero ${results ? "compact" : ""}`}>
@@ -258,7 +315,8 @@ export default function App() {
             )}
             <div className="corpus-strip">
               <span>
-                <span className="dot ready" /> ACTIVE CORPUS{" "}
+                <span className={health?.index_ready ? "dot ready" : "dot"} />{" "}
+                ACTIVE CORPUS{" "}
                 <strong>{health?.dataset ?? "Unavailable"}</strong>
               </span>
               <span>
@@ -273,10 +331,18 @@ export default function App() {
                 <button onClick={() => void search()}>Retry search</button>
               </div>
             )}
+            {notice && (
+              <p role="status" className="note">
+                {notice}
+              </p>
+            )}
             {loading ? (
               <div className="loading" role="status">
                 <Sparkles size={19} /> Searching the corpus. First use may load
                 model weights.
+                <button className="cancel-search" onClick={cancelSearch}>
+                  Cancel search
+                </button>
                 <div className="skeleton" />
                 <div className="skeleton" />
               </div>
@@ -312,6 +378,8 @@ export default function App() {
                       paper={paper}
                       rank={resultPage * 10 + i + 1}
                       open={() => void openPaper(paper)}
+                      saved={library.has(results.dataset, paper.paper_id)}
+                      toggleSaved={() => library.toggle(paper, results.dataset)}
                     />
                   ))}
                 {results.results.length > 10 && (
@@ -472,6 +540,7 @@ export default function App() {
                   see the technical report for paired confidence intervals and
                   limitations.
                 </p>
+                <Evidence benchmark={benchmark} />
               </>
             )}
           </section>
@@ -554,6 +623,16 @@ export default function App() {
               · {selected.publication_year ?? "Year unavailable"}
             </p>
             <h3>Abstract</h3>
+            <button
+              className="save-detail"
+              aria-pressed={library.has(selectedDataset, selected.paper_id)}
+              onClick={() => library.toggle(selected, selectedDataset)}
+            >
+              <Bookmark size={15} />
+              {library.has(selectedDataset, selected.paper_id)
+                ? "Remove from reading list"
+                : "Save paper"}
+            </button>
             <p className="full-abstract">
               {selected.abstract || "Abstract unavailable."}
             </p>
@@ -573,7 +652,7 @@ export default function App() {
             {detailError && <p role="alert">{detailError}</p>}
             {related.map((p) => (
               <article className="related" key={p.paper_id}>
-                <button onClick={() => void openPaper(p)}>
+                <button onClick={() => void openPaper(p, selectedDataset)}>
                   {p.title}
                   <ArrowRight size={16} />
                 </button>
@@ -615,10 +694,14 @@ function PaperCard({
   paper,
   rank,
   open,
+  saved,
+  toggleSaved,
 }: {
   paper: Paper;
   rank: number;
   open: () => void;
+  saved: boolean;
+  toggleSaved: () => void;
 }) {
   return (
     <article className="paper-card">
@@ -640,6 +723,10 @@ function PaperCard({
         )}
         <p className="abstract">{paper.abstract || "Abstract unavailable"}</p>
         <div className="paper-actions">
+          <button aria-pressed={saved} onClick={toggleSaved}>
+            <Bookmark size={14} />
+            {saved ? "Remove from reading list" : "Save paper"}
+          </button>
           <button onClick={open}>
             View details
             <ArrowRight size={14} />

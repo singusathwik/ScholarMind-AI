@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import App from "./App";
@@ -16,6 +16,7 @@ const paper = {
   score_type: "RRF",
 };
 beforeEach(() => {
+  localStorage.clear();
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => ({
@@ -36,6 +37,98 @@ beforeEach(() => {
                 },
     })),
   );
+});
+
+it("persists saved papers, notes and reading status across remounts", async () => {
+  const user = userEvent.setup();
+  const view = render(<App />);
+  await user.type(screen.getByLabelText("Research question"), "cancer");
+  await user.click(screen.getByRole("button", { name: /Find papers/ }));
+  await user.click(await screen.findByRole("button", { name: "Save paper" }));
+  await user.click(screen.getByRole("button", { name: "Reading list (1)" }));
+  await user.type(
+    screen.getByLabelText(`Notes for ${paper.title}`),
+    "Discuss the methods",
+  );
+  await user.selectOptions(
+    screen.getByLabelText(`Status for ${paper.title}`),
+    "reading",
+  );
+  view.unmount();
+  render(<App />);
+  await user.click(screen.getByRole("button", { name: "Reading list (1)" }));
+  expect(screen.getByLabelText(`Notes for ${paper.title}`)).toHaveValue(
+    "Discuss the methods",
+  );
+  expect(screen.getByLabelText(`Status for ${paper.title}`)).toHaveValue(
+    "reading",
+  );
+  await user.selectOptions(screen.getByLabelText("Reading status"), "read");
+  expect(screen.getByText("No saved papers match")).toBeInTheDocument();
+  await user.selectOptions(screen.getByLabelText("Reading status"), "all");
+  await user.click(screen.getByRole("button", { name: "Remove paper" }));
+  expect(
+    screen.getByText("Your reading list starts with a paper"),
+  ).toBeInTheDocument();
+});
+
+it("ignores a late cancelled response after a new search", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  await user.type(screen.getByLabelText("Research question"), "first");
+  let finish: (value: Response) => void = () => {};
+  vi.mocked(fetch).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await user.click(screen.getByRole("button", { name: /Find papers/ }));
+  await user.click(screen.getByRole("button", { name: "Cancel search" }));
+  await user.clear(screen.getByLabelText("Research question"));
+  await user.type(screen.getByLabelText("Research question"), "second");
+  await user.click(screen.getByRole("button", { name: /Find papers/ }));
+  expect(await screen.findByText(paper.title)).toBeInTheDocument();
+  await act(async () =>
+    finish({
+      ok: true,
+      json: async () => ({
+        results: [{ ...paper, title: "Stale result" }],
+        timings: { total_ms: 1 },
+        returned_count: 1,
+        mode: "hybrid",
+        dataset: "fixture",
+      }),
+    } as Response),
+  );
+  expect(screen.queryByText("Stale result")).not.toBeInTheDocument();
+  expect(screen.getByText(paper.title)).toBeInTheDocument();
+});
+
+it("shows the measured confidence intervals and inconclusive comparisons", async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByText("Local index ready");
+  vi.mocked(fetch).mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      available: true,
+      comparisons: {
+        "rerank minus hybrid": {
+          mean_difference: 0.0055,
+          ci95: [-0.0195, 0.0308],
+          queries: 300,
+          bootstrap_samples: 10000,
+          seed: 42,
+        },
+      },
+    }),
+  } as Response);
+  await user.click(screen.getByRole("button", { name: "Evaluation" }));
+  expect(await screen.findByText("Inconclusive")).toBeInTheDocument();
+  expect(
+    screen.getByText("95% interval [-0.0195, +0.0308]"),
+  ).toBeInTheDocument();
 });
 it("searches the selected mode and displays real response fields", async () => {
   const user = userEvent.setup();

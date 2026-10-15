@@ -15,9 +15,9 @@ Intel Core i5-13500H, 16,821,166,080 bytes installed RAM. No GPU was required.
 | Python `pytest -q` | 30 passed |
 | `ruff check .` | Passed |
 | Frontend `npm run typecheck` | Passed |
-| Frontend `npm test` | 4 passed |
+| Frontend `npm test` | 16 passed |
 | Frontend `npm run build` | Passed |
-| `npx playwright test` against real API, Microsoft Edge | 2 passed on dev UI; the same 2 passed on the production Vite preview |
+| `npx playwright test` against real API, Microsoft Edge | 3 passed on updated dev UI; original 2 also passed on the original production Vite preview |
 | npm audit after test-tool update | 0 reported vulnerabilities |
 | Semantic Scholar live ingestion | Blocked by HTTP 429 after bounded retries |
 | Docker execution | Not run: Docker executable unavailable |
@@ -27,8 +27,14 @@ Intel Core i5-13500H, 16,821,166,080 bytes installed RAM. No GPU was required.
 Browser tests exercised all four modes over real SciFact documents, pagination, paper detail
 dialog, five related papers, Escape dismissal, evaluation table and 390px mobile search.
 No browser page errors were observed. Actual captures are in `docs/screenshots/` and were
-visually inspected. The two tests contain multiple assertions and are separate from the
-four fixture-backed React tests.
+visually inspected. The three browser tests also cover saving a paper, editing notes and
+reading status, persistence after reload, BibTeX download, removal, and confidence intervals.
+They are separate from the 16 frontend tests covering UI, storage validation and synchronization,
+export metadata, request cancellation, timeouts, and connection errors.
+
+The reading-list and reliability update passed type checking and a production build.
+Retrieval models and saved benchmark artifacts are unchanged; no new accuracy improvement
+is claimed for this update.
 
 The Python test suite includes randomized graded-metric equivalence against pytrec_eval,
 corpus/qrels integrity, conflicting IDs, FAISS save/load/checksum rejection, deterministic
