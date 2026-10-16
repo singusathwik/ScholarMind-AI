@@ -29,6 +29,11 @@ import { ReadingList } from "./ReadingList";
 import { Evidence } from "./Evidence";
 
 const modes: { id: Mode; name: string; caption: string }[] = [
+  {
+    id: "optimized",
+    name: "Optimized",
+    caption: "Train-selected ranking blend",
+  },
   { id: "bm25", name: "Keyword", caption: "BM25 lexical matching" },
   { id: "dense", name: "Semantic", caption: "MiniLM embeddings" },
   { id: "hybrid", name: "Hybrid", caption: "Reciprocal rank fusion" },
@@ -235,8 +240,8 @@ export default function App() {
               <p>
                 Explore scientific literature with keyword precision and
                 semantic understanding.
-                <br className="desktop-break" /> Four retrieval methods. Real
-                papers. Transparent results.
+                <br className="desktop-break" /> Measured retrieval methods.
+                Real papers. Transparent results.
               </p>
             </section>
             <section className="search-panel" aria-label="Research search">
@@ -276,6 +281,9 @@ export default function App() {
                   {modes.map((m) => (
                     <button
                       key={m.id}
+                      disabled={
+                        m.id === "optimized" && !health?.optimized_available
+                      }
                       title={m.caption}
                       aria-pressed={mode === m.id}
                       className={mode === m.id ? "chosen" : ""}
@@ -541,6 +549,10 @@ export default function App() {
                   limitations.
                 </p>
                 <Evidence benchmark={benchmark} />
+                {benchmark.latency_note && (
+                  <p className="note">{benchmark.latency_note}</p>
+                )}
+                {benchmark.scope && <p className="note">{benchmark.scope}</p>}
               </>
             )}
           </section>
@@ -564,12 +576,13 @@ export default function App() {
                   <h2>{m.name}</h2>
                   <p>
                     {
-                      [
-                        "BM25 ranks documents by matching query terms, accounting for term frequency, rarity and document length.",
-                        "A Sentence Transformer encodes your question and paper text. FAISS searches normalized vectors using exact cosine similarity.",
-                        "Reciprocal Rank Fusion combines BM25 and dense rankings with a rank constant of 60 and 100 candidates per retriever.",
-                        "A cross-encoder scores the question alongside each of the top candidates. This adds computation and may improve or worsen relevance.",
-                      ][i]
+                      {
+                        optimized: "Training queries select how to combine keyword, semantic and cross-encoder rankings. The settings are frozen before test evaluation. See Evaluation for measured gains and uncertainty.",
+                        bm25: "BM25 ranks documents by matching query terms, accounting for term frequency, rarity and document length.",
+                        dense: "A Sentence Transformer encodes your question and paper text. FAISS searches normalized vectors using exact cosine similarity.",
+                        hybrid: "Reciprocal Rank Fusion combines BM25 and dense rankings with a rank constant of 60 and 100 candidates per retriever.",
+                        rerank: "A cross-encoder scores the question alongside each of the top candidates. This adds computation and may improve or worsen relevance.",
+                      }[m.id]
                     }
                   </p>
                 </div>

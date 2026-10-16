@@ -1,0 +1,16 @@
+{
+  "dataset": "scifact",
+  "selection_split": "train",
+  "fusion_queries": "all 809 training queries",
+  "fusion_grid": {"constant": [5, 10, 30, 60], "lexical_weight": [0.5, 1.0, 2.0], "title_weight": [0.0, 0.5]},
+  "candidate_depth": 100,
+  "rerank_depth": 20,
+  "rerank_selection_queries": 200,
+  "seed": 42,
+  "blend_weights": [0.0, 0.25, 0.5, 0.75, 1.0],
+  "blend_constant": 10,
+  "objective": "mean NDCG@10; ties prefer no cross-encoder, then earlier grid entry",
+  "test_policy": "Freeze configuration before reading test judgments. Evaluate selected optimized system once on the same 300 test queries; no test-driven tuning.",
+  "primary_comparison": "optimized minus original rerank NDCG@10; paired bootstrap 10000 resamples seed 42",
+  "scope": "Query-to-paper retrieval only. Related-paper recommendations have no relevance judgments here."
+}

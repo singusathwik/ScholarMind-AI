@@ -23,6 +23,20 @@ class SearchEngine:
         self.encoder = None
         self.reranker = None
         self.lock = RLock()
+        self.optimized_profile = None
+        self.title_bm25 = None
+
+    def get_optimized_profile(self):
+        if self.optimized_profile is None:
+            path = Path(__file__).resolve().parents[2] / "experiments/configs/optimized-scifact.json"
+            profile = json.loads(path.read_text(encoding="utf-8"))
+            for key in ["dataset", "model", "revision", "reranker", "reranker_revision", "representation"]:
+                if self.meta.get(key) != profile[key]:
+                    raise ValueError("Optimized profile does not match this index")
+            if self.meta.get("stats", {}).get("fingerprint") != profile["corpus_fingerprint"]:
+                raise ValueError("Optimized profile does not match this corpus")
+            self.optimized_profile = profile
+        return self.optimized_profile
 
     def get_encoder(self):
         if self.encoder is None:
@@ -49,10 +63,15 @@ class SearchEngine:
             raise ValueError("Query cannot be empty")
         if min(top_k, candidates, rerank_depth) < 1 or constant < 0:
             raise ValueError("Retrieval depths must be positive and RRF constant nonnegative")
-        if mode not in {"bm25", "dense", "hybrid", "rerank"}:
+        if mode not in {"bm25", "dense", "hybrid", "rerank", "optimized"}:
             raise ValueError("Unknown retrieval mode")
         with self.lock:
             start = perf_counter()
+            profile = self.get_optimized_profile() if mode == "optimized" else None
+            if profile:
+                candidates = profile["candidates"]
+                rerank_depth = profile["rerank_depth"]
+                constant = profile["constant"]
             timings = {"encoding_ms": 0.0, "retrieval_ms": 0.0, "reranking_ms": 0.0}
             # Metadata filtering happens over a full candidate ranking when requested.
             depth = len(self.papers) if year or field else max(candidates, top_k, rerank_depth)
@@ -75,6 +94,18 @@ class SearchEngine:
                 if mode == "dense"
                 else rrf([lexical, dense], constant, depth)
             )
+            if profile:
+                titles = []
+                if profile["title_weight"]:
+                    if self.title_bm25 is None:
+                        self.title_bm25 = BM25(list(self.papers.values()), "title")
+                    titles = self.title_bm25.search(query, depth)
+                ranking = rrf(
+                    [lexical, dense, titles],
+                    constant,
+                    depth,
+                    [profile["lexical_weight"], 1, profile["title_weight"]],
+                )
             if year or field:
                 ranking = [
                     (pid, s)
@@ -91,15 +122,26 @@ class SearchEngine:
                 "dense": "cosine similarity",
                 "hybrid": "RRF",
                 "rerank": "cross-encoder score",
+                "optimized": "optimized reciprocal rank (not probability)",
             }[mode]
-            if mode == "rerank":
+            if mode == "rerank" or (profile and profile["cross_encoder_weight"] > 0):
                 t = perf_counter()
                 head = self.get_reranker().rank(
                     query, ranking[:rerank_depth], self.papers, self.representation
                 )
+                if profile:
+                    weight = profile["cross_encoder_weight"]
+                    head = rrf(
+                        [ranking[:rerank_depth], head],
+                        profile["blend_constant"],
+                        rerank_depth,
+                        [1 - weight, weight],
+                    )
                 # Preserve remaining candidates for common-depth benchmark evaluation.
                 ranking = head + ranking[rerank_depth:]
                 timings["reranking_ms"] = (perf_counter() - t) * 1000
+            if profile:
+                ranking = [(pid, 1.0 / rank) for rank, (pid, _) in enumerate(ranking, 1)]
             timings["total_ms"] = (perf_counter() - start) * 1000
             return ranking[:top_k], timings, score_type
 

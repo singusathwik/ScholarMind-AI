@@ -16,6 +16,10 @@ verification, exhaustive systematic review, full-text understanding, or personal
   [checkpoint card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) describes training.
 - Exact `faiss.IndexFlatIP`, equivalent to cosine similarity on normalized vectors.
 - RRF with one-based rank and k=60; 100 candidates from each base retriever.
+- The additional Optimized mode loads a training-selected fusion/reranker profile,
+  checks the corpus fingerprint and model revisions, and reports reciprocal output
+  ranks rather than probabilities. Its results and limitations are in
+  [the accuracy comparison](ACCURACY_COMPARISON.md). Model weights are unchanged.
 - `cross-encoder/ms-marco-MiniLM-L-6-v2`, revision
   `233902d25c440f23af6f7d6e94d2946bac0bee0a`: six-layer MS MARCO cross-encoder;
   query/document pairs truncated to 512 tokens, batches of 16. No score is presented as a

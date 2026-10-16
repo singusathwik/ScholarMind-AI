@@ -1,6 +1,6 @@
 # Executed validation
 
-Local validation date: 2026-10-15. Windows, Python 3.12.15, Node.js 25.3.0,
+Local validation dates: 2026-10-15 and 2026-10-16. Windows, Python 3.12.15, Node.js 25.3.0,
 Intel Core i5-13500H, 16,821,166,080 bytes installed RAM. No GPU was required.
 
 | Check | Observed result |
@@ -9,13 +9,13 @@ Intel Core i5-13500H, 16,821,166,080 bytes installed RAM. No GPU was required.
 | NFCorpus download and structure validation | 3,633 documents; 323 test queries; full neural benchmark not run |
 | Real Sentence Transformer embedding | All 5,183 documents encoded, 384 dimensions; persisted and reloaded |
 | Real cross-encoder execution | All 300 held-out queries reranked |
-| Offline inference with HF_HUB_OFFLINE=1 and TRANSFORMERS_OFFLINE=1 | All four search modes returned real papers; five recommendations returned using cached assets |
+| Offline inference with HF_HUB_OFFLINE=1 and TRANSFORMERS_OFFLINE=1 | All five search modes returned real papers; five recommendations returned using cached assets |
 | Four-method benchmark | Completed; JSON, summary CSV, per-query CSV, plot and confidence intervals saved |
 | Development ablations | Six executed runs: rerank depths 10/20/50 and RRF constants 10/60/100, each on 50 train queries |
-| Python `pytest -q` | 30 passed |
+| Python `pytest -q` | 37 passed |
 | `ruff check .` | Passed |
 | Frontend `npm run typecheck` | Passed |
-| Frontend `npm test` | 16 passed |
+| Frontend `npm test` | 17 passed |
 | Frontend `npm run build` | Passed |
 | `npx playwright test` against real API, Microsoft Edge | 3 passed on updated dev UI; original 2 also passed on the original production Vite preview |
 | npm audit after test-tool update | 0 reported vulnerabilities |
@@ -24,17 +24,22 @@ Intel Core i5-13500H, 16,821,166,080 bytes installed RAM. No GPU was required.
 | Hosted GitHub Actions | Configuration provided; not remotely executed |
 | Public deployment | Not performed or claimed |
 
-Browser tests exercised all four modes over real SciFact documents, pagination, paper detail
+Browser tests exercised all five modes over real SciFact documents, pagination, paper detail
 dialog, five related papers, Escape dismissal, evaluation table and 390px mobile search.
 No browser page errors were observed. Actual captures are in `docs/screenshots/` and were
 visually inspected. The three browser tests also cover saving a paper, editing notes and
 reading status, persistence after reload, BibTeX download, removal, and confidence intervals.
-They are separate from the 16 frontend tests covering UI, storage validation and synchronization,
+They are separate from the 17 frontend tests covering UI, storage validation and synchronization,
 export metadata, request cancellation, timeouts, and connection errors.
 
-The reading-list and reliability update passed type checking and a production build.
-Retrieval models and saved benchmark artifacts are unchanged; no new accuracy improvement
-is claimed for this update.
+The earlier reading-list update did not change retrieval accuracy. The subsequent accuracy
+study selected 24 fusion settings on 809 training queries and five rank blends on a seeded
+200-query training sample, then evaluated the frozen choice on all 300 test queries.
+Its nDCG@10 is 0.7052 versus the original rerank result of 0.6871; the paired 95% interval
+for the difference is [+0.0079, +0.0291]. All 9,000 per-query metric comparisons in the new
+five-method result agree with pytrec_eval, as do aggregate metrics. Baseline and frozen
+profile SHA-256 hashes were checked after evaluation. Original baseline artifacts and
+model weights are unchanged. See [the full accuracy report](ACCURACY_COMPARISON.md).
 
 The Python test suite includes randomized graded-metric equivalence against pytrec_eval,
 corpus/qrels integrity, conflicting IDs, FAISS save/load/checksum rejection, deterministic

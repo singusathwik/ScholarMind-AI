@@ -80,6 +80,7 @@ def benchmark(
             for p in ["torch", "sentence-transformers", "faiss-cpu", "numpy", "rank-bm25"]
         },
         "index": engine.meta,
+        "optimized_profile": engine.get_optimized_profile() if "optimized" in modes else None,
         "summary": summary,
         "comparisons": comparisons,
         "per_query": per_query,
@@ -100,7 +101,7 @@ def benchmark(
     return result
 
 
-def plot(summary, folder):
+def plot(summary, folder, latency_label="P95_ms"):
     import matplotlib
 
     matplotlib.use("Agg")
@@ -109,7 +110,7 @@ def plot(summary, folder):
     fig, axes = plt.subplots(1, 2, figsize=(10, 4), layout="constrained")
     for ax, metric in zip(axes, ["NDCG@10", "P95_ms"]):
         ax.bar(list(summary), [r[metric] for r in summary.values()], color="#23786b")
-        ax.set_title(metric)
+        ax.set_title(latency_label if metric == "P95_ms" else metric)
         ax.tick_params(axis="x", rotation=20)
     fig.savefig(folder / "comparison.png", dpi=160)
     plt.close(fig)

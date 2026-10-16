@@ -1,5 +1,9 @@
 # Executed SciFact results
 
+The table below preserves the original four-method benchmark. For the subsequent
+training-selected Optimized method and its comparison on the same test set, see
+[Accuracy comparison](ACCURACY_COMPARISON.md).
+
 | Method | NDCG@10 | Recall@10 | Recall@100 | MAP@100 | MRR@100 | Precision@10 | P95_ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | bm25 | 0.6519 | 0.7740 | 0.8731 | 0.6132 | 0.6233 | 0.0850 | 24.5821 |

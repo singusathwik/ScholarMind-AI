@@ -39,6 +39,17 @@ beforeEach(() => {
   );
 });
 
+it("disables optimized retrieval when no matching profile is available", async () => {
+  render(<App />);
+  expect(
+    screen.getByRole("button", { name: "Optimized" }),
+  ).toBeDisabled();
+  await screen.findByText("Local index ready");
+  expect(
+    screen.getByRole("button", { name: "Optimized" }),
+  ).toBeDisabled();
+});
+
 it("persists saved papers, notes and reading status across remounts", async () => {
   const user = userEvent.setup();
   const view = render(<App />);

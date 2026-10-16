@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("--limit", type=int)
     parser.add_argument("--index")
     parser.add_argument("--output")
-    parser.add_argument("--modes", nargs="+", choices=["bm25", "dense", "hybrid", "rerank"])
+    parser.add_argument("--modes", nargs="+", choices=["bm25", "dense", "hybrid", "rerank", "optimized"])
     parser.add_argument("--rerank-depth", type=int, default=20)
     parser.add_argument("--constant", type=int, default=60)
     parser.add_argument("--candidates", type=int, default=100)

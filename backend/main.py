@@ -19,7 +19,7 @@ settings = Settings()
 
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
-    mode: Literal["bm25", "dense", "hybrid", "rerank"] = "hybrid"
+    mode: Literal["bm25", "dense", "hybrid", "rerank", "optimized"] = "hybrid"
     top_k: int = Field(default=10, ge=1, le=50)
     publication_year: int | None = Field(default=None, ge=1600, le=2100)
     field_of_study: str | None = Field(default=None, max_length=100)
@@ -85,11 +85,19 @@ def create_app(engine=None):
     @app.get("/api/health")
     def health():
         e = app.state.engine
+        optimized_available = False
+        if e:
+            try:
+                e.get_optimized_profile()
+                optimized_available = True
+            except (OSError, ValueError, KeyError):
+                pass
         return {
             "status": "ready" if e else "index_unavailable",
             "index_ready": bool(e),
             "dataset": e.meta["dataset"] if e else settings.dataset,
             "documents": len(e.papers) if e else 0,
+            "optimized_available": optimized_available,
             "loaded_models": {"encoder": bool(e and e.encoder), "reranker": bool(e and e.reranker)},
         }
 
@@ -97,7 +105,8 @@ def create_app(engine=None):
     def models():
         e = get_engine()
         return {
-            "modes": ["bm25", "dense", "hybrid", "rerank"],
+            "modes": ["bm25", "dense", "hybrid", "rerank"]
+            + (["optimized"] if health()["optimized_available"] else []),
             "model": e.meta["model"],
             "revision": e.meta["revision"],
             "reranker": e.meta["reranker"],
@@ -108,7 +117,7 @@ def create_app(engine=None):
     @app.post("/api/search", response_model=SearchResponse)
     def search(request: SearchRequest):
         e = get_engine()
-        mode = "rerank" if request.reranking else request.mode
+        mode = "rerank" if request.reranking and request.mode != "optimized" else request.mode
         try:
             ranked, timings, score_type = e.search(
                 request.query,
@@ -123,6 +132,8 @@ def create_app(engine=None):
             raise HTTPException(
                 503, "Requested model unavailable; check model cache and server logs."
             ) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         logger.info(json.dumps({"event": "search", "mode": mode, "results": len(ranked), **timings}))
         return {
             "results": [
@@ -164,7 +175,11 @@ def create_app(engine=None):
 
     @app.get("/api/benchmark-results")
     def benchmarks():
-        path = Path("experiments/results/scifact-test/results.json")
+        if app.state.engine and app.state.engine.meta["dataset"] != "scifact":
+            return {"available": False, "message": "No saved evaluation for the active corpus"}
+        path = Path("experiments/results/scifact-optimized-test/results.json")
+        if not path.exists():
+            path = Path("experiments/results/scifact-test/results.json")
         if not path.exists():
             return {"available": False, "message": "Not yet evaluated"}
         result = json.loads(path.read_text(encoding="utf-8"))

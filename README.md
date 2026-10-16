@@ -26,7 +26,9 @@ flowchart LR
     Index --> Related[Similar-paper recommendations]
 ```
 
-Four selectable methods: Keyword, Semantic, Hybrid, and Hybrid + reranking. The UI includes
+Five selectable methods on the validated SciFact index: Optimized, Keyword, Semantic,
+Hybrid, and Hybrid + reranking. Optimized uses a profile selected on training queries,
+with corpus and model revision checks. The original methods remain available for comparison. The UI includes
 query examples, result pagination, paper details, related papers, explicit score types,
 loading/error states, responsive layout and a saved-results evaluation dashboard.
 Authors, years and source URLs appear only when available. SciFact metadata is not enriched
@@ -91,6 +93,20 @@ See [deployment and troubleshooting](docs/DEPLOYMENT.md) for details.
 | Fusion | RRF, one-based ranks, k=60, 100 candidates per retriever |
 | Reranker | cross-encoder/ms-marco-MiniLM-L-6-v2; top 20 for benchmark; 512-token pairs |
 | Recommendations | Stored paper vectors; cosine neighbors excluding the selected paper |
+
+### Accuracy improvement study
+
+The training-selected `Optimized` mode is evaluated against all four original baselines
+on the same 300 SciFact test queries: nDCG@10 **0.7052** versus **0.6871** for the previous
+best method (+2.62% relative; paired 95% difference interval +0.0079 to +0.0291).
+Recall@10 increases from 0.8129 to 0.8500; Recall@100 remains 0.9577.
+See [the accuracy comparison](docs/ACCURACY_COMPARISON.md)
+for results, paired uncertainty, latency limits, and reproduction commands. Full rankings,
+per-query metrics, and configuration hashes are saved in
+`experiments/results/scifact-optimized-test/`; all development trials are saved separately
+in `experiments/results/accuracy-development/`. Original benchmark artifacts are preserved.
+The Evaluation screen displays the new comparison. This study measures search relevance;
+the related-paper panel has no labeled recommendation benchmark and remains unchanged.
 
 The index stores resolved model revisions, corpus hash, metadata checksums, stable IDs and
 dimensions. To reproduce the recorded checkpoints exactly:

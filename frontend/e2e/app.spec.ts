@@ -12,7 +12,13 @@ test("real corpus discovery, details, recommendations, all retrieval modes and d
     fullPage: true,
   });
   await page.getByLabel("Research question").fill("Vitamin D and bone health");
-  for (const mode of ["Keyword", "Semantic", "Hybrid", "Hybrid + reranking"]) {
+  for (const mode of [
+    "Keyword",
+    "Semantic",
+    "Hybrid",
+    "Hybrid + reranking",
+    "Optimized",
+  ]) {
     await page.getByRole("button", { name: mode, exact: true }).click();
     await page.getByRole("button", { name: "Find papers" }).click();
     await expect(page.locator(".paper-card")).toHaveCount(10, {
@@ -41,6 +47,9 @@ test("real corpus discovery, details, recommendations, all retrieval modes and d
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Evaluation", exact: true }).click();
   await expect(page.getByRole("table")).toBeVisible();
+  await expect(
+    page.getByRole("rowheader", { name: "optimized", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "How certain is the difference?" }),
   ).toBeVisible();

@@ -1,4 +1,4 @@
-export type Mode = "bm25" | "dense" | "hybrid" | "rerank";
+export type Mode = "bm25" | "dense" | "hybrid" | "rerank" | "optimized";
 export interface Paper {
   paper_id: string;
   title: string;
@@ -20,12 +20,15 @@ export interface Results {
   returned_count: number;
 }
 export interface Health {
+  optimized_available?: boolean;
   status: string;
   index_ready: boolean;
   dataset: string;
   documents: number;
 }
 export interface Benchmark {
+  latency_note?: string;
+  scope?: string;
   available: boolean;
   dataset?: string;
   split?: string;

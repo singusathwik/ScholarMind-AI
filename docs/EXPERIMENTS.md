@@ -5,7 +5,7 @@ test results: BM25 defaults (k1=1.5, b=0.75), MiniLM, title plus abstract, norma
 IndexFlatIP, 100 lexical and 100 dense candidates, RRF k=60, rerank top 20, retrieval depth 100.
 No fine-tuning or test-driven parameter selection is performed.
 
-SciFact's BEIR `train` queries are used only for exploratory development ablations.
+In the original study, SciFact's BEIR `train` queries are used only for exploratory development ablations.
 The ablation script uses the first 50 query IDs in lexicographic order, explicitly marked
 as a partial development set. This is reproducible but not a random sample and can contain
 related claims; do not interpret its intervals as independent population estimates.
@@ -48,3 +48,13 @@ python scripts/benchmark_models.py --index indexes/scifact-title --split train -
 ```
 
 Use unique output directories for new experiments to preserve prior results.
+
+## Subsequent accuracy study
+
+`experiments/configs/accuracy-study.json` declares the training-only selection grid:
+24 weighted RRF configurations on all 809 training queries, then five cross-encoder
+rank blends on 200 seeded training queries. The selected profile is frozen before
+evaluating the same 300 test queries. The original rerank method is the primary
+nDCG@10 comparator; other baseline comparisons are exploratory.
+See [the accuracy comparison](ACCURACY_COMPARISON.md) for complete results and commands.
+This is a subsequent evaluation on a previously reported test set, not an external replication.

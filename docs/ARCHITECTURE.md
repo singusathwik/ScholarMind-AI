@@ -33,6 +33,10 @@ Exact FAISS rankings are sorted by score then ID for deterministic ties. This sm
 implementation requests all distances to make cutoff ties deterministic; it is not designed
 for million-document scale. Reranking reorders a candidate head and preserves the tail for
 common-depth evaluation. API search reranks at least the requested result count (20–50).
+The separate Optimized mode uses its frozen profile's fixed rerank depth, so increasing
+the requested result count preserves the previously ranked prefix. It blends fusion
+and cross-encoder ranks and retains the remaining candidates. Its profile is rejected
+for mismatched corpora or model revisions; qrels are never read during serving.
 
 Metadata filters search a full candidate list and exclude documents missing requested
 metadata. SciFact therefore yields no matches for year or field filters. The UI does not
