@@ -1,5 +1,14 @@
 # Dataset card
 
+The subsequent paper-recommendation study also uses all 1,000 official SciDocs
+recommendation test click events (862 seed papers, ten displayed candidates per event).
+Only the 8,758 needed paper texts were embedded. Public metadata, event files, and
+position propensities come from the [official SciDocs release](https://github.com/allenai/scidocs);
+download URLs and SHA-256 hashes are saved with the external result. Raw downloads and
+embeddings remain git-ignored. This is a logged-candidate test, not the full SciDocs suite.
+Local SciFact co-evidence links form a separate sparse proxy benchmark. See
+[related-paper evaluation](RELATED_PAPERS_EVALUATION.md) for split construction and limits.
+
 ## SciFact / BEIR retrieval export
 
 Origin: [SciFact](https://github.com/allenai/scifact), repackaged by

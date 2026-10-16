@@ -1,0 +1,24 @@
+{
+  "method": "hybrid",
+  "rrf_constant": 5,
+  "lexical_weight": 0.5,
+  "dataset": "scifact",
+  "corpus_fingerprint": "9e76f432981aaa1c451143ef178d40c81e5c5c155588b061a9cc74d03eeddf30",
+  "model": "sentence-transformers/all-MiniLM-L6-v2",
+  "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "representation": "both",
+  "selection": "paper-disjoint training co-evidence proxy",
+  "lexical": {
+    "type": "TF-IDF cosine",
+    "text": "title plus complete abstract",
+    "ngram_range": [
+      1,
+      2
+    ],
+    "stop_words": "english",
+    "sublinear_tf": true,
+    "max_features": 100000,
+    "dtype": "float32"
+  },
+  "candidates": 100
+}

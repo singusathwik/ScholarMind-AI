@@ -1,5 +1,43 @@
 import { expect, test } from "@playwright/test";
 
+test("related-paper blend can be compared with original semantic neighbors", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Keyword", exact: true }).click();
+  await page.getByLabel("Research question").fill("immune cells");
+  await page.getByRole("button", { name: "Find papers" }).click();
+  await page
+    .getByRole("button", { name: "View details", exact: true })
+    .first()
+    .click();
+  await expect(page.locator(".related")).toHaveCount(5);
+  await expect(page.locator(".related").first()).toContainText(
+    "related rank fusion",
+  );
+  await page.screenshot({
+    path: "../docs/screenshots/related-papers.png",
+    fullPage: false,
+  });
+  await page.getByLabel("Related-paper method").selectOption("dense");
+  await expect(page.locator(".related").first()).toContainText(
+    "cosine similarity",
+  );
+  await page.getByLabel("Related-paper method").selectOption("auto");
+  await expect(page.locator(".related").first()).toContainText(
+    "related rank fusion",
+  );
+  const next = page.locator(".related button").first();
+  const nextTitle = (await next.innerText()).trim();
+  await next.click();
+  await expect(
+    page.getByRole("dialog").getByRole("heading", { level: 2 }),
+  ).toHaveText(nextTitle);
+  await expect(page.locator(".related")).toHaveCount(5);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+});
+
 test("real corpus discovery, details, recommendations, all retrieval modes and dashboard", async ({
   page,
 }) => {
@@ -46,7 +84,9 @@ test("real corpus discovery, details, recommendations, all retrieval modes and d
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Evaluation", exact: true }).click();
-  await expect(page.getByRole("table")).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: "Effectiveness and warmed query latency" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("rowheader", { name: "optimized", exact: true }),
   ).toBeVisible();
@@ -56,6 +96,17 @@ test("real corpus discovery, details, recommendations, all retrieval modes and d
   await expect(
     page.getByText("Inconclusive", { exact: true }).first(),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "How accurate are related papers?" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("table", {
+      name: "External logged-click test: original versus recommended blend",
+    }),
+  ).toBeVisible();
+  await page
+    .locator('section[aria-labelledby="related-evaluation-title"]')
+    .screenshot({ path: "../docs/screenshots/related-evaluation.png" });
   await page.screenshot({
     path: "../docs/screenshots/evaluation.png",
     fullPage: true,

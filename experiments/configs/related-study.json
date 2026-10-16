@@ -1,0 +1,17 @@
+{
+  "primary_dataset": "scifact co-evidence proxy",
+  "label_rule": "Two distinct papers are related when both have positive relevance judgments for the same claim. These are proxy labels, not direct recommendation ratings.",
+  "development": "Training-claim pairs after removing every paper appearing in any multi-positive test claim; remove empty anchors",
+  "test": "All anchors in multi-positive test claims; recommend from all 5183 papers, excluding the seed",
+  "split_guard": "No development anchor or positive target may be a test anchor",
+  "selection_metric": "macro NDCG@5",
+  "grid": {"rrf_constant": [5, 20, 60], "lexical_weight": [0.25, 0.5, 1.0, 2.0]},
+  "baseline": "Unmodified stored MiniLM title-plus-abstract cosine neighbors",
+  "lexical": {"type": "TF-IDF cosine", "text": "title plus complete abstract", "ngram_range": [1, 2], "stop_words": "english", "sublinear_tf": true, "max_features": 100000, "dtype": "float32"},
+  "candidates": 100,
+  "tie_break": "Prefer baseline, then earlier grid entry",
+  "uncertainty": "10000 paired bootstrap resamples of positive-graph connected components; seed 42",
+  "external_test": "All 1000 official SciDocs recommendation test click events, restricted to their 10 displayed candidates. Frozen SciFact-selected method; no external test tuning.",
+  "external_metrics": "Click rank, nDCG@10, hit@1, hit@5, MRR; inverse display-position propensity weighted variants; bootstrap grouped by seed paper",
+  "scope": "Local full-corpus proxy retrieval and external logged-candidate reranking are separate tasks; neither is a calibrated probability of relevance or a personalized user study."
+}

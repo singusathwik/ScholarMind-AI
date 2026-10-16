@@ -9,6 +9,7 @@ from ml.retrieval.dense import Encoder
 from ml.retrieval.faiss_store import VectorStore
 from ml.retrieval.hybrid import rrf
 from ml.retrieval.reranker import Reranker
+from ml.retrieval.related import RelatedRecommender
 
 
 class SearchEngine:
@@ -25,6 +26,8 @@ class SearchEngine:
         self.lock = RLock()
         self.optimized_profile = None
         self.title_bm25 = None
+        self.related_profile = None
+        self.related_model = None
 
     def get_optimized_profile(self):
         if self.optimized_profile is None:
@@ -145,12 +148,42 @@ class SearchEngine:
             timings["total_ms"] = (perf_counter() - start) * 1000
             return ranking[:top_k], timings, score_type
 
-    def recommend(self, pid, top_k=5):
-        if pid not in self.papers:
-            raise KeyError(pid)
-        row = self.store.ids.index(pid)
-        results = self.store.search(self.store.vectors[row], top_k + 1)
-        return [(other, score) for other, score in results if other != pid][:top_k]
+    def recommendation_profile(self):
+        if self.related_profile is None:
+            path = Path(__file__).resolve().parents[2] / "experiments/configs/related-scifact.json"
+            try:
+                profile = json.loads(path.read_text(encoding="utf-8"))
+                if any(
+                    self.meta.get(k) != profile[k] for k in ["dataset", "model", "revision", "representation"]
+                ):
+                    return None
+                if self.meta.get("stats", {}).get("fingerprint") != profile["corpus_fingerprint"]:
+                    return None
+                self.related_profile = profile
+            except (OSError, ValueError, KeyError):
+                return None
+        return self.related_profile
+
+    def recommendation_method(self, requested="auto"):
+        if requested not in {"auto", "dense", "hybrid"}:
+            raise ValueError("Unknown recommendation method")
+        profile = self.recommendation_profile() if requested != "dense" else None
+        if requested == "hybrid" and (not profile or profile["method"] != "hybrid"):
+            raise ValueError("No validated recommendation profile for this index")
+        return "hybrid" if profile and profile["method"] == "hybrid" else "dense"
+
+    def recommend(self, pid, top_k=5, method="auto"):
+        with self.lock:
+            if pid not in self.papers:
+                raise KeyError(pid)
+            actual = self.recommendation_method(method)
+            if self.related_model is None:
+                self.related_model = RelatedRecommender(self.papers, self.store)
+            return self.related_model.rank(pid, top_k, self.related_profile if actual == "hybrid" else None)
 
     def shared_terms(self, first, second):
-        return sorted(set(tokenize(self.papers[first].title)) & set(tokenize(self.papers[second].title)))
+        from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+        terms = set(tokenize(self.papers[first].title)) & set(tokenize(self.papers[second].title))
+        terms = [t for t in terms if t not in ENGLISH_STOP_WORDS and len(t) > 2]
+        return sorted(terms, key=lambda t: (-self.bm25.model.idf.get(t, 0), t))[:8]

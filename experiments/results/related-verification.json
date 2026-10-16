@@ -1,0 +1,14 @@
+{
+  "local_metric_checks": 812,
+  "external_metric_checks": 8000,
+  "serving_parity_checks": 116,
+  "all_aggregate_metrics_verified": true,
+  "profile_hash_verified": true,
+  "dependencies": {
+    "numpy": "2.5.4",
+    "scikit-learn": "1.9.1",
+    "scipy": "1.18.1",
+    "faiss-cpu": "1.15.1",
+    "pytrec-eval-terrier": "0.5.10"
+  }
+}

@@ -154,24 +154,54 @@ def create_app(engine=None):
         return asdict(e.papers[paper_id])
 
     @app.get("/api/papers/{paper_id}/recommendations")
-    def recommendations(paper_id: str, top_k: int = Query(default=5, ge=1, le=20)):
+    def recommendations(
+        paper_id: str,
+        top_k: int = Query(default=5, ge=1, le=20),
+        method: Literal["auto", "dense", "hybrid"] = "auto",
+    ):
         e = get_engine()
         try:
-            results = e.recommend(paper_id, top_k)
+            results = e.recommend(paper_id, top_k, method)
+            actual = e.recommendation_method(method)
         except KeyError as exc:
             raise HTTPException(404, "Paper not found") from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         return {
+            "method": actual,
             "results": [
                 dict(
                     asdict(e.papers[pid]),
                     score=score,
-                    score_type="cosine similarity",
+                    score_type="related rank fusion" if actual == "hybrid" else "cosine similarity",
                     shared_title_terms=e.shared_terms(paper_id, pid),
                 )
                 for pid, score in results
             ],
-            "explanation": "Content similarity, not a probability or personalized prediction.",
+            "explanation": (
+                "Semantic and full-abstract lexical rank fusion."
+                if actual == "hybrid"
+                else "Stored embedding cosine similarity."
+            )
+            + " Scores are not relevance probabilities. Shared title terms are descriptive overlap, not proof of relevance.",
         }
+
+    @app.get("/api/recommendation-benchmark")
+    def recommendation_benchmark():
+        e = get_engine()
+        profile = e.recommendation_profile()
+        if not profile:
+            return {"available": False, "message": "No matching recommendation evaluation for this index"}
+        panels = {}
+        for name, folder in [("local", "related-scifact-test"), ("external", "related-scidocs-test")]:
+            path = Path("experiments/results") / folder / "results.json"
+            if path.exists():
+                result = json.loads(path.read_text(encoding="utf-8"))
+                if result.get("configuration") == profile:
+                    panels[name] = {
+                        k: v for k, v in result.items() if k not in {"per_query", "runs", "qrels", "source"}
+                    }
+        return {"available": bool(panels), **panels}
 
     @app.get("/api/benchmark-results")
     def benchmarks():

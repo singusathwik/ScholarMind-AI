@@ -5,6 +5,8 @@ pydantic-settings==2.16.0
 numpy==2.5.4
 faiss-cpu==1.15.1
 rank-bm25==0.2.2
+scikit-learn==1.9.1
+scipy==1.18.1
 pytrec-eval-terrier==0.5.10
 pytest==9.1.1
 ruff==0.17.0

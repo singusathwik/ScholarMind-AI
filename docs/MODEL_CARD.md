@@ -29,6 +29,11 @@ No model was fine-tuned in this project. Weights retain their upstream licenses.
 resolves immutable revisions and serving uses those recorded revisions. New builds can pin
 them explicitly with `--revision` and `--reranker-revision`.
 
+Related-paper retrieval adds a separately selected TF-IDF/semantic rank blend. Its two
+test-set point estimates improve modestly, but their cluster-bootstrap intervals include
+zero. This is not established superiority or calibrated relevance accuracy. See
+[recommendation evaluation](RELATED_PAPERS_EVALUATION.md) for the proxy-label and click-log limits.
+
 ## Evaluation and compute
 
 See [the technical report](TECHNICAL_REPORT.md) and machine-readable files under

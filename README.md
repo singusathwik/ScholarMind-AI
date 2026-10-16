@@ -92,7 +92,7 @@ See [deployment and troubleshooting](docs/DEPLOYMENT.md) for details.
 | Vector index | Exact FAISS IndexFlatIP, L2-normalized embeddings |
 | Fusion | RRF, one-based ranks, k=60, 100 candidates per retriever |
 | Reranker | cross-encoder/ms-marco-MiniLM-L-6-v2; top 20 for benchmark; 512-token pairs |
-| Recommendations | Stored paper vectors; cosine neighbors excluding the selected paper |
+| Recommendations | Stored semantic vectors plus full-abstract TF-IDF rank fusion; original cosine neighbors remain selectable |
 
 ### Accuracy improvement study
 
@@ -106,7 +106,22 @@ per-query metrics, and configuration hashes are saved in
 `experiments/results/scifact-optimized-test/`; all development trials are saved separately
 in `experiments/results/accuracy-development/`. Original benchmark artifacts are preserved.
 The Evaluation screen displays the new comparison. This study measures search relevance;
-the related-paper panel has no labeled recommendation benchmark and remains unchanged.
+paper-to-paper recommendations are evaluated separately below.
+
+### Related-paper recommendations
+
+The paper dialog now combines semantic neighbors with full-abstract lexical similarity,
+using a separate profile selected on 94 paper-disjoint training anchors. Switch to
+**Original semantic** to compare with the previous recommendations. Scores are labeled
+by method and are not probabilities; shared title terms omit common stop words.
+
+Two frozen-profile tests produced higher point estimates: local co-evidence nDCG@5
+**0.5734 to 0.5961** on 58 test papers, and propensity-adjusted click nDCG@10
+**0.5383 to 0.5399** on 1,000 external SciDocs test events. **Both confidence intervals
+include zero: a reliable accuracy improvement is not yet established.** The local test
+is a sparse proxy over the full corpus; the click test reranks ten displayed candidates.
+See [the complete recommendation evaluation](docs/RELATED_PAPERS_EVALUATION.md) for
+metrics, independent verification, source attribution, and reproduction commands.
 
 The index stores resolved model revisions, corpus hash, metadata checksums, stable IDs and
 dimensions. To reproduce the recorded checkpoints exactly:
@@ -180,7 +195,8 @@ NFCorpus full evaluation, MPNet, fine-tuning and approximate indexing are not cl
 | GET /api/models | Supported modes and checkpoint information |
 | POST /api/search | Query, mode, top_k, optional year/field filters and reranking |
 | GET /api/papers/{paper_id} | Stored paper metadata |
-| GET /api/papers/{paper_id}/recommendations | Content-based neighbors |
+| GET /api/papers/{paper_id}/recommendations | Related papers; method=auto, dense, or hybrid |
+| GET /api/recommendation-benchmark | Separate local-proxy and external-click evaluation summaries |
 | GET /api/benchmark-results | Saved measured results; no experiment is run on request |
 
 Search returns score types, stage timings, retrieved count and available metadata.

@@ -41,13 +41,9 @@ beforeEach(() => {
 
 it("disables optimized retrieval when no matching profile is available", async () => {
   render(<App />);
-  expect(
-    screen.getByRole("button", { name: "Optimized" }),
-  ).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Optimized" })).toBeDisabled();
   await screen.findByText("Local index ready");
-  expect(
-    screen.getByRole("button", { name: "Optimized" }),
-  ).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Optimized" })).toBeDisabled();
 });
 
 it("persists saved papers, notes and reading status across remounts", async () => {
@@ -120,21 +116,27 @@ it("shows the measured confidence intervals and inconclusive comparisons", async
   const user = userEvent.setup();
   render(<App />);
   await screen.findByText("Local index ready");
-  vi.mocked(fetch).mockResolvedValueOnce({
-    ok: true,
-    json: async () => ({
-      available: true,
-      comparisons: {
-        "rerank minus hybrid": {
-          mean_difference: 0.0055,
-          ci95: [-0.0195, 0.0308],
-          queries: 300,
-          bootstrap_samples: 10000,
-          seed: 42,
-        },
-      },
-    }),
-  } as Response);
+  vi.mocked(fetch).mockImplementation(
+    async (url) =>
+      ({
+        ok: true,
+        json: async () =>
+          String(url).endsWith("/recommendation-benchmark")
+            ? { available: false }
+            : {
+                available: true,
+                comparisons: {
+                  "rerank minus hybrid": {
+                    mean_difference: 0.0055,
+                    ci95: [-0.0195, 0.0308],
+                    queries: 300,
+                    bootstrap_samples: 10000,
+                    seed: 42,
+                  },
+                },
+              },
+      }) as Response,
+  );
   await user.click(screen.getByRole("button", { name: "Evaluation" }));
   expect(await screen.findByText("Inconclusive")).toBeInTheDocument();
   expect(

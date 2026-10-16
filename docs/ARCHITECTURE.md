@@ -11,6 +11,8 @@ flowchart LR
   FAISS --> RRF
   RRF --> CE[Optional cross-encoder]
   FAISS --> Related[Content recommendations]
+  Text[Complete title and abstract] --> TFIDF[TF-IDF cosine ranking]
+  TFIDF --> Related
   Data[BEIR corpus] --> Build[Normalize and batch embed]
   Build --> FAISS
   Qrels[Held-out judgments] --> Eval[Offline evaluation only]
@@ -24,6 +26,12 @@ reused, and serialized with a lock to keep CPU memory and inference concurrency 
 The index can serve recommendations without loading either model because paper vectors
 are persisted. Each index records corpus fingerprint, IDs, dimensions, representation,
 resolved checkpoint revisions, indexing durations and artifact checksums.
+
+Related recommendations now have a separate training-selected weighted-RRF profile.
+The lexical TF-IDF matrix is fitted lazily on complete corpus abstracts and reused under
+the engine lock. The original cosine-only method remains selectable; incompatible indices
+fall back to it automatically. Local and external recommendation tests are served through
+`/api/recommendation-benchmark` with their distinct label/candidate definitions.
 
 No database or LLM API is needed. Application retrieval never reads qrels. Offline evaluation
 imports the same engine, supplies queries, and scores returned IDs separately. The UI's

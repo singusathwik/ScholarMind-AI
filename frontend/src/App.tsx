@@ -27,6 +27,7 @@ import {
 import { useLibrary } from "./library";
 import { ReadingList } from "./ReadingList";
 import { Evidence } from "./Evidence";
+import { RecommendationEvidence } from "./RecommendationEvidence";
 
 const modes: { id: Mode; name: string; caption: string }[] = [
   {
@@ -65,6 +66,8 @@ export default function App() {
   const [selectedDataset, setSelectedDataset] = useState("");
   const [notice, setNotice] = useState("");
   const [related, setRelated] = useState<Paper[]>([]);
+  const [relatedMethod, setRelatedMethod] = useState("auto");
+  const [relatedExplanation, setRelatedExplanation] = useState("");
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [benchmark, setBenchmark] = useState<Benchmark | null>(null);
@@ -93,6 +96,7 @@ export default function App() {
     dialogRef.current?.showModal();
     let current = true;
     setRelated([]);
+    setRelatedExplanation("");
     setDetailError("");
     if (selectedDataset !== health?.dataset) {
       setDetailLoading(false);
@@ -103,12 +107,18 @@ export default function App() {
     }
     setDetailLoading(true);
     const controller = new AbortController();
-    api<{ results: Paper[] }>(
-      `/papers/${encodeURIComponent(selected.paper_id)}/recommendations`,
+    api<{ results: Paper[]; explanation?: string }>(
+      `/papers/${encodeURIComponent(selected.paper_id)}/recommendations?method=${relatedMethod}`,
       { signal: controller.signal },
     )
       .then((response) => {
-        if (current) setRelated(response.results);
+        if (current) {
+          setRelated(response.results);
+          setRelatedExplanation(
+            response.explanation ??
+              "Content similarity; scores are not relevance probabilities.",
+          );
+        }
       })
       .catch((e) => {
         if (current) setDetailError(e.message);
@@ -120,7 +130,7 @@ export default function App() {
       current = false;
       controller.abort();
     };
-  }, [selected, selectedDataset, health?.dataset]);
+  }, [selected, selectedDataset, health?.dataset, relatedMethod]);
 
   async function search(text = query) {
     if (!text.trim() || loading) return;
@@ -552,9 +562,14 @@ export default function App() {
                 {benchmark.latency_note && (
                   <p className="note">{benchmark.latency_note}</p>
                 )}
-                {benchmark.scope && <p className="note">{benchmark.scope}</p>}
+                {benchmark.scope && (
+                  <p className="note">
+                    This search experiment: {benchmark.scope}
+                  </p>
+                )}
               </>
             )}
+            <RecommendationEvidence />
           </section>
         )}
         {page === "about" && (
@@ -577,11 +592,15 @@ export default function App() {
                   <p>
                     {
                       {
-                        optimized: "Training queries select how to combine keyword, semantic and cross-encoder rankings. The settings are frozen before test evaluation. See Evaluation for measured gains and uncertainty.",
+                        optimized:
+                          "Training queries select how to combine keyword, semantic and cross-encoder rankings. The settings are frozen before test evaluation. See Evaluation for measured gains and uncertainty.",
                         bm25: "BM25 ranks documents by matching query terms, accounting for term frequency, rarity and document length.",
-                        dense: "A Sentence Transformer encodes your question and paper text. FAISS searches normalized vectors using exact cosine similarity.",
-                        hybrid: "Reciprocal Rank Fusion combines BM25 and dense rankings with a rank constant of 60 and 100 candidates per retriever.",
-                        rerank: "A cross-encoder scores the question alongside each of the top candidates. This adds computation and may improve or worsen relevance.",
+                        dense:
+                          "A Sentence Transformer encodes your question and paper text. FAISS searches normalized vectors using exact cosine similarity.",
+                        hybrid:
+                          "Reciprocal Rank Fusion combines BM25 and dense rankings with a rank constant of 60 and 100 candidates per retriever.",
+                        rerank:
+                          "A cross-encoder scores the question alongside each of the top candidates. This adds computation and may improve or worsen relevance.",
                       }[m.id]
                     }
                   </p>
@@ -657,10 +676,18 @@ export default function App() {
             )}
             <hr />
             <h3>Continue your reading</h3>
-            <p className="note">
-              Related by embedding similarity. Scores are cosine similarities,
-              not relevance probabilities.
-            </p>
+            <label>
+              Related-paper method{" "}
+              <select
+                aria-label="Related-paper method"
+                value={relatedMethod}
+                onChange={(e) => setRelatedMethod(e.target.value)}
+              >
+                <option value="auto">Recommended blend</option>
+                <option value="dense">Original semantic</option>
+              </select>
+            </label>
+            <p className="note">{relatedExplanation}</p>
             {detailLoading && <p role="status">Finding related papers…</p>}
             {detailError && <p role="alert">{detailError}</p>}
             {related.map((p) => (
@@ -669,7 +696,9 @@ export default function App() {
                   {p.title}
                   <ArrowRight size={16} />
                 </button>
-                <span>Cosine similarity {p.score?.toFixed(3)}</span>
+                <span>
+                  {p.score_type ?? "Similarity score"} {p.score?.toFixed(4)}
+                </span>
                 {!!p.shared_title_terms?.length && (
                   <p>Shared title terms: {p.shared_title_terms.join(", ")}</p>
                 )}

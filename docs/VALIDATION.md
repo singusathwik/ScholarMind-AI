@@ -12,12 +12,12 @@ Intel Core i5-13500H, 16,821,166,080 bytes installed RAM. No GPU was required.
 | Offline inference with HF_HUB_OFFLINE=1 and TRANSFORMERS_OFFLINE=1 | All five search modes returned real papers; five recommendations returned using cached assets |
 | Four-method benchmark | Completed; JSON, summary CSV, per-query CSV, plot and confidence intervals saved |
 | Development ablations | Six executed runs: rerank depths 10/20/50 and RRF constants 10/60/100, each on 50 train queries |
-| Python `pytest -q` | 37 passed |
+| Python `pytest -q` | 45 passed |
 | `ruff check .` | Passed |
 | Frontend `npm run typecheck` | Passed |
-| Frontend `npm test` | 17 passed |
+| Frontend `npm test` | 19 passed |
 | Frontend `npm run build` | Passed |
-| `npx playwright test` against real API, Microsoft Edge | 3 passed on updated dev UI; original 2 also passed on the original production Vite preview |
+| `npx playwright test` against real API, Microsoft Edge | 4 passed on updated dev UI; original 2 also passed on the original production Vite preview |
 | npm audit after test-tool update | 0 reported vulnerabilities |
 | Semantic Scholar live ingestion | Blocked by HTTP 429 after bounded retries |
 | Docker execution | Not run: Docker executable unavailable |
@@ -27,9 +27,9 @@ Intel Core i5-13500H, 16,821,166,080 bytes installed RAM. No GPU was required.
 Browser tests exercised all five modes over real SciFact documents, pagination, paper detail
 dialog, five related papers, Escape dismissal, evaluation table and 390px mobile search.
 No browser page errors were observed. Actual captures are in `docs/screenshots/` and were
-visually inspected. The three browser tests also cover saving a paper, editing notes and
+visually inspected. The four browser tests also cover saving a paper, editing notes and
 reading status, persistence after reload, BibTeX download, removal, and confidence intervals.
-They are separate from the 17 frontend tests covering UI, storage validation and synchronization,
+They are separate from the 19 frontend tests covering UI, storage validation and synchronization,
 export metadata, request cancellation, timeouts, and connection errors.
 
 The earlier reading-list update did not change retrieval accuracy. The subsequent accuracy
@@ -40,6 +40,14 @@ for the difference is [+0.0079, +0.0291]. All 9,000 per-query metric comparisons
 five-method result agree with pytrec_eval, as do aggregate metrics. Baseline and frozen
 profile SHA-256 hashes were checked after evaluation. Original baseline artifacts and
 model weights are unchanged. See [the full accuracy report](ACCURACY_COMPARISON.md).
+
+The subsequent related-paper update passed a full-corpus co-evidence proxy test on 58
+held-out anchors and the complete 1,000-event SciDocs recommendation click test.
+Its 812 local and 8,000 external per-event metric checks passed independent verification,
+along with aggregate metrics and 116 serving-ranking parity checks. Both recommendation
+gain intervals include zero. Browser tests exercise method switching, correct score labels,
+navigation from one recommended paper to another, and both separate evaluation panels.
+See [related-paper evaluation](RELATED_PAPERS_EVALUATION.md) for full evidence and limitations.
 
 The Python test suite includes randomized graded-metric equivalence against pytrec_eval,
 corpus/qrels integrity, conflicting IDs, FAISS save/load/checksum rejection, deterministic
